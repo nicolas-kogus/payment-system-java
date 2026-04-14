@@ -8,21 +8,24 @@ import java.time.format.DateTimeFormatter;
 
 public class ContractService {
 
-    OnlinePaymentService onlinePaymentService = new PaypalService();
+    private OnlinePaymentService onlinePaymentService;
+
+    public ContractService(OnlinePaymentService onlinePaymentService) {
+        this.onlinePaymentService = onlinePaymentService;
+    }
 
     public void processContract(Contract contract, Integer months) {
 
-        Double paymentTax = 0.00;
+        Double basicQuota = contract.getTotalValue() / months;
 
         for (int i = 1; i <= months; i++) {
+            LocalDate dueDate = contract.getDate().plusMonths(i);
 
-            paymentTax = contract.getTotalValue() / months;
+            double interest = onlinePaymentService.interest(basicQuota, i);
+            double fee = onlinePaymentService.paymentFee(basicQuota + interest);
+            double quota = basicQuota + interest + fee;
 
-            paymentTax += onlinePaymentService.interest(paymentTax, months) * i;
-            paymentTax += onlinePaymentService.paymentFee(paymentTax);
-
-            contract.addInstallment(new Installment(contract.getDate().plusMonths(i), paymentTax));
-
+            contract.addInstallment(new Installment(dueDate, quota));
         }
     }
 }
